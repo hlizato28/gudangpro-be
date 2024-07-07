@@ -15,6 +15,7 @@ import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.lang.Nullable;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -104,6 +105,30 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         strExceptionArr[1] = "handleExceptionInternal(Exception ex, @Nullable Object body, HttpHeaders headers, HttpStatus status, WebRequest request) \n"+RequestCapture.allRequest(request);//perubahan 12-12-2023
         LoggingFile.exceptionStringz(strExceptionArr, ex, OtherConfig.getFlagLoging());
         return buildResponseEntity(new ApiError(HttpStatus.INTERNAL_SERVER_ERROR,"TIDAK DAPAT DIPROSES",ex,request.getDescription(false),"X-99-001"));
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatus status,
+                                                                  WebRequest request) {
+        String error = "Malformed JSON request";
+        ApiError apiError = new ApiError(HttpStatus.BAD_REQUEST, error, ex, request.getDescription(false), "X-01-002");
+        strExceptionArr[1] = "handleHttpMessageNotReadable \n" + RequestCapture.allRequest(request);
+        LoggingFile.exceptionStringz(strExceptionArr, ex, OtherConfig.getFlagLoging());
+        return buildResponseEntity(apiError);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleAllExceptions(Exception ex, WebRequest request) {
+        ApiError apiError = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred",
+                ex,
+                request.getDescription(false),
+                "X-99-999");
+        strExceptionArr[1] = "handleAllExceptions \n" + RequestCapture.allRequest(request);
+        LoggingFile.exceptionStringz(strExceptionArr, ex, OtherConfig.getFlagLoging());
+        return buildResponseEntity(apiError);
     }
 }
 

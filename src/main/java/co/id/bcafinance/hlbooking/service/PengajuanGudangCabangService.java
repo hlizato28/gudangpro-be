@@ -350,7 +350,6 @@ public class PengajuanGudangCabangService {
 
         DetailBalancing detailBalancing = optionalDetailBalancing.get();
         detailBalancing.setStokAkhir(detailBalancing.getStokAwal() - totalJumlahDiterima);
-        detailBalancing.setBarangOut(totalJumlahDiterima);
         detailBalancing.setUpdatedAt(new Date());
         detailBalancing.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
 
@@ -382,9 +381,10 @@ public class PengajuanGudangCabangService {
         detailDto.setNamaBarang(detail.getBarangGudang().getBarangCabang().getBarang().getNamaBarang());
         detailDto.setSatuan(detail.getBarangGudang().getBarangCabang().getBarang().getSatuan());
         detailDto.setJumlahDiminta(detail.getJumlahDiminta());
-        detailDto.setStok(detail.getBarangGudang().getJumlah() + detail.getJumlahDiminta());
+        detailDto.setStok(detail.getBarangGudang().getJumlah());
         detailDto.setJumlahApproved(detail.getJumlahApproved());
         detailDto.setJumlahDiterima(detail.getJumlahDiterima());
+        detailDto.setIdBarangGudang(detail.getBarangGudang().getIdBarangGudang());
         return detailDto;
     }
 }

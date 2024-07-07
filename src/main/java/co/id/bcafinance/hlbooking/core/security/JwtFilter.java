@@ -149,14 +149,26 @@ public class JwtFilter extends OncePerRequestFilter {
 
             // XSS:  Path Variable Validation
             if (!XSSValidationUtils.isValidURL(decodedURI, OtherConfig.getKataTerlarang())) {
+                System.out.println("XSS attack detected in URL: " + decodedURI);
                 return false;
             }
+
             if (!StringUtils.isEmpty(requestWrapper.getBody())) {
-                // XSS :  Request Body validation
-                if (!XSSValidationUtils.isValidURLPattern(requestWrapper.getBody(), OtherConfig.getKataTerlarang())) {
+                String body = requestWrapper.getBody();
+                System.out.println("Request body: " + body);
+                if (!XSSValidationUtils.isValidJSONContent(body, OtherConfig.getKataTerlarang())) {
+                    System.out.println("XSS attack detected in body: " + body);
                     return false;
                 }
             }
+
+//            if (!StringUtils.isEmpty(requestWrapper.getBody())) {
+//                // XSS :  Request Body validation
+//                if (!XSSValidationUtils.isValidURLPattern(requestWrapper.getBody(), OtherConfig.getKataTerlarang())) {
+//                    System.out.println("XSS attack detected in body: " + decodedURI);
+//                    return false;
+//                }
+//            }
         } catch (XSSAttackExcception ex) {
             strExceptionArr[1] = "XSSFilteringManual(MyHttpServletRequestWrapper requestWrapper, HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)"+ RequestCapture.allRequest(request);
             LoggingFile.exceptionStringz(strExceptionArr, ex, OtherConfig.getFlagLoging());
