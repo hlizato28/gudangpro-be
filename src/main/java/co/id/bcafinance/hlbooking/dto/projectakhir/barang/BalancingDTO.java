@@ -15,7 +15,7 @@ import java.util.List;
 public class BalancingDTO {
     private Long idBalancing;
     private Date createdAt;
-    private Boolean isApproved;
+    private String kategori;
 
     private List<DetailBalancingDTO> details;
 
@@ -35,12 +35,12 @@ public class BalancingDTO {
         this.createdAt = createdAt;
     }
 
-    public Boolean getIsApproved() {
-        return isApproved;
+    public String getKategori() {
+        return kategori;
     }
 
-    public void setApproved(Boolean approved) {
-        isApproved = approved;
+    public void setKategori(String kategori) {
+        this.kategori = kategori;
     }
 
     public List<DetailBalancingDTO> getDetails() {

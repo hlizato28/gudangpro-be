@@ -11,18 +11,19 @@ Version 1.0
 
 import co.id.bcafinance.hlbooking.core.security.ModulAuthority;
 import co.id.bcafinance.hlbooking.dto.projectakhir.barang.BarangGudangDTO;
+import co.id.bcafinance.hlbooking.dto.projectakhir.barang.DetailBalancingDTO;
 import co.id.bcafinance.hlbooking.dto.projectakhir.pengajuan.DetailPengajuanGudangCabangDTO;
 import co.id.bcafinance.hlbooking.dto.projectakhir.pengajuan.PengajuanGudangCabangDTO;
 import co.id.bcafinance.hlbooking.handler.ResponseHandler;
 import co.id.bcafinance.hlbooking.model.User;
+import co.id.bcafinance.hlbooking.model.projectakhir.barang.Balancing;
 import co.id.bcafinance.hlbooking.model.projectakhir.barang.BarangGudang;
+import co.id.bcafinance.hlbooking.model.projectakhir.barang.DetailBalancing;
 import co.id.bcafinance.hlbooking.model.projectakhir.barang.KategoriBarang;
 import co.id.bcafinance.hlbooking.model.projectakhir.pengajuan.cabang.DetailPengajuanGudangCabang;
 import co.id.bcafinance.hlbooking.model.projectakhir.pengajuan.cabang.PengajuanGudangCabang;
 import co.id.bcafinance.hlbooking.repo.UserRepo;
-import co.id.bcafinance.hlbooking.repo.projectakhir.BarangGudangRepo;
-import co.id.bcafinance.hlbooking.repo.projectakhir.DetailPengajuanGudangCabangRepo;
-import co.id.bcafinance.hlbooking.repo.projectakhir.PengajuanGudangCabangRepo;
+import co.id.bcafinance.hlbooking.repo.projectakhir.*;
 import co.id.bcafinance.hlbooking.service.projectakhir.BalancingService;
 import co.id.bcafinance.hlbooking.util.GlobalFunction;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,9 +50,13 @@ public class PengajuanGudangCabangService {
     @Autowired
     UserRepo userRepo;
     @Autowired
+    BalancingRepo balancingRepo;
+    @Autowired
     BarangGudangRepo barangGudangRepo;
     @Autowired
     BalancingService balancingService;
+    @Autowired
+    DetailBalancingRepo detailBalancingRepo;
     @Autowired
     private ModulAuthority modulAuthority;
 
@@ -99,7 +104,6 @@ public class PengajuanGudangCabangService {
                     "FE04032", request);
         }
 
-        // Jika tidak ada error, simpan pengajuan dan detailnya
         try {
             PengajuanGudangCabang pengajuan = new PengajuanGudangCabang();
             pengajuan.setUser(user);
@@ -118,18 +122,24 @@ public class PengajuanGudangCabangService {
                 }
                 BarangGudang barangGudang = optionalBarangGudang.get();
 
+                if (barangGudang.getJumlah() < detailDTO.getJumlahDiminta()) {
+                    return new ResponseHandler().generateResponse("Stok barang tidak mencukupi!!",
+                            HttpStatus.NOT_FOUND,
+                            null,
+                            "FE04033", request);
+                }
+
                 DetailPengajuanGudangCabang detail = new DetailPengajuanGudangCabang();
                 detail.setPengajuanGudangCabang(savedPengajuan);
                 detail.setBarangGudang(barangGudang);
                 detail.setJumlahDiminta(detailDTO.getJumlahDiminta());
+                detail.setJumlahDiterima(0L);
+                detail.setJumlahApproved(0L);
                 detail.setApproved(false);
                 detail.setActive(true);
                 detail.setDiterima(false);
                 detail.setCreatedBy(Long.parseLong(mapToken.get("de").toString()));
                 detailPengajuanGudangCabangRepo.save(detail);
-
-                barangGudang.setJumlah(barangGudang.getJumlah() - detailDTO.getJumlahDiminta());
-                barangGudangRepo.save(barangGudang);
             }
 
             return new ResponseHandler().generateResponse("Pengajuan Gudang Berhasil Dibuat!",
@@ -204,57 +214,6 @@ public class PengajuanGudangCabangService {
         }
     }
 
-//    public ResponseEntity<Object> getPengajuanDetailByUser(HttpServletRequest request) {
-//        mapToken = modulAuthority.checkAuthorization(request);
-//
-//        Optional<User> optionalUser = userRepo.findById(Long.parseLong(mapToken.get("de").toString()));
-//        if (optionalUser.isEmpty()) {
-//            return new ResponseHandler().generateResponse("User tidak ditemukan!",
-//                    HttpStatus.NOT_FOUND,
-//                    null,
-//                    "FE04033", request);
-//        }
-//
-//        User user = optionalUser.get();
-//
-//        try {
-//            List<PengajuanGudangCabang> pengajuans = pengajuanGudangCabangRepo.findPengajuanDetailsByUserAndApproved(user, true, true, false);
-//
-//            if (pengajuans.isEmpty()) {
-//                return new ResponseHandler().generateResponse("Belum ada pengajuan yang sudah diapprove",
-//                        HttpStatus.OK,
-//                        null,
-//                        null, request);
-//            }
-//
-//            List<PengajuanGudangCabangDTO> result = new ArrayList<>();
-//
-//            for (PengajuanGudangCabang pengajuan : pengajuans) {
-//                PengajuanGudangCabangDTO dto = mapPengajuanToDTO(pengajuan);
-//
-//                List<DetailPengajuanGudangCabang> details = detailPengajuanGudangCabangRepo.findByPengajuanGudangCabangAndIsApprovedAndIsDiterimaAndIsActive(pengajuan, true, false, true);
-//                List<DetailPengajuanGudangCabangDTO> detailDTOs = details.stream()
-//                        .map(this::mapDetailToDTO)
-//                        .collect(Collectors.toList());
-//
-//                dto.setDetails(detailDTOs);
-//                result.add(dto);
-//            }
-//
-//            return new ResponseHandler().generateResponse("Data pengajuan berhasil diambil",
-//                    HttpStatus.OK,
-//                    result,
-//                    null, request);
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return new ResponseHandler().generateResponse("Gagal mengambil data pengajuan",
-//                    HttpStatus.INTERNAL_SERVER_ERROR,
-//                    null,
-//                    "FE04032", request);
-//        }
-//    }
-
     public ResponseEntity<Object> approval(DetailPengajuanGudangCabangDTO detailPengajuanGudangCabangDTO, Boolean app, HttpServletRequest request) {
         mapToken = modulAuthority.checkAuthorization(request);
 
@@ -272,9 +231,12 @@ public class PengajuanGudangCabangService {
 
         try {
             if (app) {
+                balancingService.pergerakanBarang(barangGudang.getIdBarangGudang(), detailPengajuanGudangCabangDTO.getJumlahApproved(), 0L, 0L, request);
+
                 detailPengajuanGudangCabang.setApproved(true);
                 detailPengajuanGudangCabang.setJumlahApproved(detailPengajuanGudangCabangDTO.getJumlahApproved());
                 barangGudang.setJumlah(barangGudang.getJumlah() + detailPengajuanGudangCabangDTO.getJumlahDiminta() - detailPengajuanGudangCabangDTO.getJumlahApproved());
+                detailPengajuanGudangCabang.setJumlahDiterima(0L);
             } else {
                 detailPengajuanGudangCabang.setActive(false);
                 barangGudang.setJumlah(barangGudang.getJumlah() + detailPengajuanGudangCabangDTO.getJumlahDiminta());
@@ -321,7 +283,7 @@ public class PengajuanGudangCabangService {
             barangGudang.setJumlah(barangGudang.getJumlah() + detailPengajuanGudangCabang.getJumlahApproved());
             barangGudangRepo.save(barangGudang);
 
-            balancingService.pergerakanBarang(barangGudang.getIdBarangGudang(), detailPengajuanGudangCabangDTO.getJumlahDiterima(), 0L, request);
+            balancingService.pergerakanBarang(barangGudang.getIdBarangGudang(), 0L, detailPengajuanGudangCabangDTO.getJumlahDiterima(), 0L, request);
             
             return new ResponseHandler().generateResponse("Item sudah di terima!",
                     HttpStatus.OK,
@@ -333,10 +295,83 @@ public class PengajuanGudangCabangService {
         }
     }
 
+    public Page<PengajuanGudangCabangDTO> findRevisiPengajuan(Long idBarangGudang, Date tgl, HttpServletRequest request, Pageable pageable) {
+
+        Optional<BarangGudang> optionalBarangGudang = barangGudangRepo.findById(idBarangGudang);
+        if (optionalBarangGudang.isEmpty()) {
+            return Page.empty();
+        }
+        BarangGudang barangGudang = optionalBarangGudang.get();
+
+        Page<PengajuanGudangCabang> pengajuanPage = pengajuanGudangCabangRepo.findPengajuanDetailsByBarangGudangAndTanggal(barangGudang, tgl, pageable);
+
+        return pengajuanPage.map(pengajuan -> {
+            PengajuanGudangCabangDTO dto = mapPengajuanToDTO(pengajuan);
+
+            List<DetailPengajuanGudangCabang> details = detailPengajuanGudangCabangRepo.findByPengajuanGudangCabangAndIsApprovedAndIsActive(pengajuan, true, true);
+            List<DetailPengajuanGudangCabangDTO> detailDTOs = details.stream()
+                    .map(this::mapDetailToDTO)
+                    .collect(Collectors.toList());
+
+            dto.setDetails(detailDTOs);
+            return dto;
+        });
+    }
+
+    public ResponseEntity<Object> revisiDetailPengajuan(Long idDetailBalancing, List<PengajuanGudangCabangDTO> pengajuanGudangCabangDTOList, HttpServletRequest request) {
+        mapToken = modulAuthority.checkAuthorization(request);
+
+        List<DetailPengajuanGudangCabang> updatedDetails = new ArrayList<>();
+        Long totalJumlahDiterima = 0L;
+
+        for (PengajuanGudangCabangDTO pengajuan : pengajuanGudangCabangDTOList) {
+            for (DetailPengajuanGudangCabangDTO detail : pengajuan.getDetails()) {
+                Optional<DetailPengajuanGudangCabang> optionalDetail = detailPengajuanGudangCabangRepo.findById(detail.getIdDetailPengajuanGudangCabang());
+
+                if (optionalDetail.isPresent()) {
+                    DetailPengajuanGudangCabang revisiDetail = optionalDetail.get();
+                    revisiDetail.setJumlahApproved(detail.getJumlahApproved());
+                    revisiDetail.setJumlahDiterima(detail.getJumlahDiterima());
+                    revisiDetail.setDiterima(false);
+                    revisiDetail.setUpdatedAt(new Date());
+                    revisiDetail.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
+                    updatedDetails.add(revisiDetail);
+                    totalJumlahDiterima += detail.getJumlahDiterima();
+                } else {
+                    return ResponseEntity.badRequest().body("Detail dengan ID " + detail.getIdDetailPengajuanGudangCabang() + " tidak ditemukan.");
+                }
+            }
+        }
+
+        detailPengajuanGudangCabangRepo.saveAll(updatedDetails);
+
+        //Edit Detail Balancing
+        Optional<DetailBalancing> optionalDetailBalancing = detailBalancingRepo.findById(idDetailBalancing);
+
+        DetailBalancing detailBalancing = optionalDetailBalancing.get();
+        detailBalancing.setStokAkhir(detailBalancing.getStokAwal() - totalJumlahDiterima);
+        detailBalancing.setBarangOut(totalJumlahDiterima);
+        detailBalancing.setUpdatedAt(new Date());
+        detailBalancing.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
+
+        detailBalancingRepo.save(detailBalancing);
+
+       //Edit Barang Gudang
+        BarangGudang barangGudang = detailBalancing.getBarangGudang();
+        barangGudang.setJumlah(detailBalancing.getStokAwal() - totalJumlahDiterima);
+        barangGudang.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
+        barangGudang.setUpdatedAt(new Date());
+
+        barangGudangRepo.save(barangGudang);
+
+        return ResponseEntity.ok("Revisi bulk berhasil dilakukan dan total jumlah diterima telah diupdate");
+    }
+
     private PengajuanGudangCabangDTO mapPengajuanToDTO(PengajuanGudangCabang pengajuan) {
         PengajuanGudangCabangDTO dto = new PengajuanGudangCabangDTO();
         dto.setIdPengajuanGudangCabang(pengajuan.getIdPengajuanGudangCabang());
         dto.setUser(pengajuan.getUser().getNama());
+        dto.setUnit(pengajuan.getUser().getUnit().getNamaUnit());
         return dto;
     }
 
@@ -348,6 +383,8 @@ public class PengajuanGudangCabangService {
         detailDto.setSatuan(detail.getBarangGudang().getBarangCabang().getBarang().getSatuan());
         detailDto.setJumlahDiminta(detail.getJumlahDiminta());
         detailDto.setStok(detail.getBarangGudang().getJumlah() + detail.getJumlahDiminta());
+        detailDto.setJumlahApproved(detail.getJumlahApproved());
+        detailDto.setJumlahDiterima(detail.getJumlahDiterima());
         return detailDto;
     }
 }

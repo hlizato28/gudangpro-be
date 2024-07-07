@@ -22,6 +22,8 @@ public class DetailBalancingDTO {
 
     private Long stokAkhir;
 
+    private Long idBarangGudang;
+
     public Long getIdDetailBalancing() {
         return idDetailBalancing;
     }
@@ -60,6 +62,14 @@ public class DetailBalancingDTO {
 
     public void setStokAwal(Long stokAwal) {
         this.stokAwal = stokAwal;
+    }
+
+    public Long getIdBarangGudang() {
+        return idBarangGudang;
+    }
+
+    public void setIdBarangGudang(Long idBarangGudang) {
+        this.idBarangGudang = idBarangGudang;
     }
 
     public Long getBarangIn() {

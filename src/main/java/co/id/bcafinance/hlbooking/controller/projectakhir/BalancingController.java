@@ -10,6 +10,7 @@ Version 1.0
 */
 
 import co.id.bcafinance.hlbooking.dto.projectakhir.barang.*;
+import co.id.bcafinance.hlbooking.dto.projectakhir.pengajuan.PengajuanGudangCabangDTO;
 import co.id.bcafinance.hlbooking.model.projectakhir.barang.DetailBalancing;
 import co.id.bcafinance.hlbooking.service.projectakhir.BalancingService;
 import co.id.bcafinance.hlbooking.service.projectakhir.BarangService;
@@ -41,7 +42,7 @@ public class BalancingController {
     @Autowired
     ModelMapper modelMapper;
 
-    @GetMapping("/all")
+    @GetMapping("/all-no-balancing")
     public ResponseEntity<Page<DetailBalancingDTO>> getAllBalancing(
             @RequestParam(defaultValue = "") String kategori,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date tanggal,
@@ -51,7 +52,7 @@ public class BalancingController {
             HttpServletRequest request) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<DetailBalancingDTO> detailBalancingDTOPage = balancingService.getBalancing(kategori, tanggal, pageable, request);
+        Page<DetailBalancingDTO> detailBalancingDTOPage = balancingService.getAllNoBalancing(kategori, tanggal, pageable, request);
         return ResponseEntity.ok(detailBalancingDTOPage);
     }
 
@@ -65,7 +66,7 @@ public class BalancingController {
             HttpServletRequest request) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<ReportDTO> reportDTOPage = balancingService.getReportBalancing(kategori, tanggal,false, false, pageable, request);
+        Page<ReportDTO> reportDTOPage = balancingService.getReportBalancing(kategori, tanggal,false, pageable, request);
         return ResponseEntity.ok(reportDTOPage);
     }
 
@@ -79,7 +80,7 @@ public class BalancingController {
             HttpServletRequest request) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<ReportDTO> reportDTOPage = balancingService.getReportBalancing(kategori, tanggal,true, false, pageable, request);
+        Page<ReportDTO> reportDTOPage = balancingService.getReportBalancing(kategori, tanggal,true, pageable, request);
         return ResponseEntity.ok(reportDTOPage);
     }
 
@@ -99,6 +100,36 @@ public class BalancingController {
     public ResponseEntity<Object> revisiBalancing(@RequestBody @Valid ReportDTO reportDTO,
                                                   HttpServletRequest request) {
         return balancingService.approveBalancing(reportDTO, false, request);
+    }
+
+    @GetMapping("/all-revisi")
+    public ResponseEntity<Page<BalancingDTO>> getRevisi(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<BalancingDTO> balancingDTOPage = balancingService.getRevisi(pageable, request);
+        return ResponseEntity.ok(balancingDTOPage);
+    }
+
+    @GetMapping("/all-by-bid/{id}")
+    public ResponseEntity<Page<DetailBalancingDTO>> findAllByBalancingId(
+            @PathVariable(value = "id") Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<DetailBalancingDTO> detailBalancingDTOPage = balancingService.findAllByBalancingId(id, pageable, request);
+        return ResponseEntity.ok(detailBalancingDTOPage);
+    }
+
+    @PutMapping("/revisi-balancing/save/{id}")
+    public ResponseEntity<Object> revisiBalancing(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        return balancingService.revisiBalancing(id, request);
     }
 
 

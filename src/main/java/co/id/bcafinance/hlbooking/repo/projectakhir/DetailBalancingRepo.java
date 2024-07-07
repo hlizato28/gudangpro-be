@@ -9,6 +9,7 @@ Created on 28/06/2024 11:30
 Version 1.0
 */
 
+import co.id.bcafinance.hlbooking.model.projectakhir.barang.Balancing;
 import co.id.bcafinance.hlbooking.model.projectakhir.barang.DetailBalancing;
 import co.id.bcafinance.hlbooking.model.projectakhir.barang.BarangGudang;
 import co.id.bcafinance.hlbooking.model.projectakhir.barang.KategoriBarang;
@@ -38,20 +39,6 @@ public interface DetailBalancingRepo extends JpaRepository<DetailBalancing, Long
         return page.getContent().stream().findFirst();
     }
 
-    @Query("SELECT db FROM DetailBalancing db " +
-            "JOIN db.barangGudang bg " +
-            "JOIN bg.barangCabang bc " +
-            "JOIN bc.barang b " +
-            "WHERE db.balancing = :bl " +
-            "AND db.isActive = :ac " +
-            "AND bc.cabang = :cb " +
-            "AND b.kategoriBarang = :kat")
-    Page<DetailBalancing> findByCabangAndKategoriAndNoBalancingAndActive(@Param("cb") String cb,
-                                                                             @Param("kat")KategoriBarang kat,
-                                                                             @Param("ac") Boolean ac,
-                                                                             @Param("bl") Long bl,
-                                                                             Pageable pageable);
-
     @Query("SELECT bg, db FROM BarangGudang bg " +
             "JOIN bg.barangCabang bc " +
             "JOIN bc.barang b " +
@@ -68,19 +55,30 @@ public interface DetailBalancingRepo extends JpaRepository<DetailBalancing, Long
                                                       @Param("tanggal") Date tanggal,
                                                       Pageable pageable);
 
+    @Query("SELECT CASE WHEN COUNT(db) > 0 THEN true ELSE false END " +
+            "FROM DetailBalancing db " +
+            "JOIN db.barangGudang bg " +
+            "JOIN bg.barangCabang bc " +
+            "JOIN bc.barang b " +
+            "WHERE bc.cabang = :cabang AND b.kategoriBarang = :kat " +
+            "AND db.balancing IS NOT NULL AND db.isActive = true " +
+            "AND CONVERT(DATE, db.createdAt) = :tanggal")
+    boolean existByKategoriBarangAndTanggal(@Param("cabang") String cabang,
+                                            @Param("kat") KategoriBarang kat,
+                                            @Param("tanggal") Date tanggal);
+
     @Query("SELECT db " +
             "FROM DetailBalancing db " +
             "JOIN db.balancing bl " +
             "JOIN db.barangGudang bg " +
             "JOIN bg.barangCabang bc " +
             "JOIN bc.barang b " +
-            "WHERE bl.isApproved = :app AND bl.isRejected = :rj " +
+            "WHERE bl.isApproved = :app AND bl.isRevisi = false " +
             "AND CONVERT(DATE, bl.createdAt) = :tanggal " +
             "AND bc.cabang = :cabang " +
             "AND b.kategoriBarang = :kategori")
     Page<DetailBalancing> findFilteredDetailBalancing(@Param("cabang") String cabang,
                                                       @Param("app") Boolean app,
-                                                      @Param("rj") Boolean rj,
                                                       @Param("kategori") KategoriBarang kategori,
                                                       @Param("tanggal") Date tanggal,
                                                       Pageable pageable);
@@ -97,6 +95,11 @@ public interface DetailBalancingRepo extends JpaRepository<DetailBalancing, Long
             "GROUP BY dp.barangGudang.idBarangGudang, ug.namaUnitGroup")
     List<Object[]> findPengajuanDataByBarangGudangIds(@Param("idBarangGudangList") List<Long> idBarangGudangList,
                                                       @Param("tanggal") Date tanggal);
+
+    Optional<DetailBalancing> findTop1ByBalancing(Balancing balancing);
+
+    Page<DetailBalancing> findByBalancingAndIsActive(Balancing balancing, Boolean act, Pageable pageable);
+
 
 }
 

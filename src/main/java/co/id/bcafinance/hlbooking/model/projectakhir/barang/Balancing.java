@@ -23,8 +23,8 @@ public class Balancing {
     @Column(name = "IsApproved")
     private Boolean isApproved;
 
-    @Column(name = "IsRejected")
-    private Boolean isRejected;
+    @Column(name = "IsRevisi")
+    private Boolean isRevisi;
 
     @Column(name = "IsActive")
     private Boolean isActive;
@@ -57,12 +57,12 @@ public class Balancing {
         isApproved = approved;
     }
 
-    public Boolean getIsRejected() {
-        return isRejected;
+    public Boolean getIsRevisi() {
+        return isRevisi;
     }
 
-    public void setRejected(Boolean rejected) {
-        isRejected = rejected;
+    public void setRevisi(Boolean revisi) {
+        isRevisi = revisi;
     }
 
     public Boolean getIsActive() {

@@ -10,6 +10,7 @@ Version 1.0
 */
 
 import co.id.bcafinance.hlbooking.model.User;
+import co.id.bcafinance.hlbooking.model.projectakhir.barang.BarangGudang;
 import co.id.bcafinance.hlbooking.model.projectakhir.pengajuan.cabang.PengajuanGudangCabang;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Date;
 import java.util.List;
 
 public interface PengajuanGudangCabangRepo extends JpaRepository <PengajuanGudangCabang, Long> {
@@ -44,4 +46,15 @@ public interface PengajuanGudangCabangRepo extends JpaRepository <PengajuanGudan
                                                                       @Param("active") Boolean active,
                                                                       @Param("app") Boolean app,
                                                                       @Param("dt") Boolean dt);
+
+    @Query("SELECT DISTINCT p FROM PengajuanGudangCabang p " +
+            "JOIN DetailPengajuanGudangCabang d ON d.pengajuanGudangCabang = p " +
+            "WHERE d.barangGudang = :bg " +
+            "AND d.isApproved = true " +
+            "AND d.isActive = true " +
+            "AND CONVERT(date, d.updatedAt) = CONVERT(date, :tgl) " +
+            "AND p.isActive = true")
+    Page<PengajuanGudangCabang> findPengajuanDetailsByBarangGudangAndTanggal(@Param("bg") BarangGudang bg,
+                                                                             @Param("tgl") Date tgl,
+                                                                             Pageable pageable);
 }

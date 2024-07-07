@@ -23,6 +23,15 @@ public class DetailPengajuanGudangCabangDTO {
     private Long jumlahDiminta;
     private Long jumlahApproved;
     private Long jumlahDiterima;
+    private Long idBarangGudang;
+
+    public Long getIdBarangGudang() {
+        return idBarangGudang;
+    }
+
+    public void setIdBarangGudang(Long idBarangGudang) {
+        this.idBarangGudang = idBarangGudang;
+    }
 
     public Long getIdDetailPengajuanGudangCabang() {
         return idDetailPengajuanGudangCabang;

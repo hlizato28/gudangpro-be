@@ -21,6 +21,8 @@ public class PengajuanGudangCabangDTO {
     private Long idPengajuanGudangCabang;
     private String user;
 
+    private String unit;
+
     private List<DetailPengajuanGudangCabangDTO> details;
 
     public List<DetailPengajuanGudangCabangDTO> getDetails() {
@@ -47,5 +49,12 @@ public class PengajuanGudangCabangDTO {
         this.user = user;
     }
 
+    public String getUnit() {
+        return unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
 }
 

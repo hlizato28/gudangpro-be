@@ -10,15 +10,12 @@ Version 1.0
 */
 
 import co.id.bcafinance.hlbooking.core.security.ModulAuthority;
-import co.id.bcafinance.hlbooking.dto.projectakhir.barang.BalancingDTO;
-import co.id.bcafinance.hlbooking.dto.projectakhir.barang.DetailBalancingDTO;
-import co.id.bcafinance.hlbooking.dto.projectakhir.barang.ReportBalancingDTO;
-import co.id.bcafinance.hlbooking.dto.projectakhir.barang.ReportDTO;
+import co.id.bcafinance.hlbooking.dto.projectakhir.barang.*;
+import co.id.bcafinance.hlbooking.dto.projectakhir.pengajuan.DetailPengajuanGudangCabangDTO;
+import co.id.bcafinance.hlbooking.dto.projectakhir.pengajuan.PengajuanGudangCabangDTO;
 import co.id.bcafinance.hlbooking.handler.ResponseHandler;
-import co.id.bcafinance.hlbooking.model.projectakhir.barang.Balancing;
-import co.id.bcafinance.hlbooking.model.projectakhir.barang.DetailBalancing;
-import co.id.bcafinance.hlbooking.model.projectakhir.barang.BarangGudang;
-import co.id.bcafinance.hlbooking.model.projectakhir.barang.KategoriBarang;
+import co.id.bcafinance.hlbooking.model.projectakhir.barang.*;
+import co.id.bcafinance.hlbooking.model.projectakhir.pengajuan.cabang.DetailPengajuanGudangCabang;
 import co.id.bcafinance.hlbooking.repo.projectakhir.*;
 import co.id.bcafinance.hlbooking.util.GlobalFunction;
 import org.modelmapper.ModelMapper;
@@ -65,7 +62,62 @@ public class BalancingService {
 
     private String[] strExceptionArr = new String[2];
 
-    public Page<DetailBalancingDTO> getBalancing(String kat, Date tanggal, Pageable pageable, HttpServletRequest request) {
+    public ResponseEntity<Object> pergerakanBarang(Long id, Long app, Long out, Long in, HttpServletRequest request) {
+        Optional<BarangGudang> optionalBarangGudang = barangGudangRepo.findById(id);
+        if (optionalBarangGudang.isEmpty()) {
+            return new ResponseHandler().generateResponse("Barang tidak ditemukan!!",
+                    HttpStatus.NOT_FOUND,
+                    null,
+                    "FE04033", request);
+        }
+        BarangGudang barangGudang = optionalBarangGudang.get();
+
+        Optional<DetailBalancing> optionalDetailBalancing = detailBalancingRepo.findByBarangGudangAndBalancingAndIsActive(barangGudang, null, true);
+
+        DetailBalancing detailBalancing;
+        if (optionalDetailBalancing.isPresent()) {
+            detailBalancing = optionalDetailBalancing.get();
+        } else {
+            Optional<DetailBalancing> optionalLastDetailBalancing = detailBalancingRepo.findTopLatestByBarangGudangAndIsActive(barangGudang, true);
+
+            DetailBalancing lastDetailBalancing = optionalLastDetailBalancing.orElse(null);
+
+            detailBalancing = new DetailBalancing();
+            detailBalancing.setBarangGudang(barangGudang);
+            detailBalancing.setStokAwal(lastDetailBalancing != null ? lastDetailBalancing.getStokAkhir() : (barangGudang.getJumlah() + app));
+            detailBalancing.setStokAkhir(0L);
+            detailBalancing.setBarangIn(0L);
+            detailBalancing.setBarangOut(0L);
+            detailBalancing.setActive(true);
+        }
+
+        detailBalancing.setBarangIn(detailBalancing.getBarangIn() + in);
+        detailBalancing.setBarangOut(detailBalancing.getBarangOut() + out);
+        detailBalancing.setUpdatedAt(new Date());
+
+        if (app > 0) {
+            if (detailBalancing.getStokAkhir() == 0L) {
+                detailBalancing.setStokAkhir(detailBalancing.getStokAwal() - app);
+            } else {
+                detailBalancing.setStokAkhir(detailBalancing.getStokAkhir() - app);
+            }
+        } else {
+            detailBalancing.setStokAkhir(detailBalancing.getStokAwal() + detailBalancing.getBarangIn() - detailBalancing.getBarangOut());
+        }
+
+        detailBalancingRepo.save(detailBalancing);
+
+        // Update stok di BarangGudang
+        barangGudang.setJumlah(detailBalancing.getStokAkhir());
+        barangGudangRepo.save(barangGudang);
+
+        return new ResponseHandler().generateResponse("Pergerakan barang berhasil dicatat",
+                HttpStatus.OK,
+                null,
+                null, request);
+    }
+
+    public Page<DetailBalancingDTO> getAllNoBalancing(String kat, Date tanggal, Pageable pageable, HttpServletRequest request) {
         mapToken = modulAuthority.checkAuthorization(request);
         String cabang = mapToken.get("cg").toString();
 
@@ -76,6 +128,12 @@ public class BalancingService {
         KategoriBarang kategoriBarang = optionalKategoriBarang.get();
 
         try {
+            boolean balancingExists = detailBalancingRepo.existByKategoriBarangAndTanggal(cabang, kategoriBarang, tanggal);
+
+            if (balancingExists) {
+                throw new RuntimeException("Balancing untuk kategori " + kategoriBarang.getNamaKategori() + " sudah dibuat untuk hari ini.");
+            }
+
             Page<Object[]> combinedResults = detailBalancingRepo.findBarangGudangAndDetailBalancing(cabang, kategoriBarang, tanggal, pageable);
 
             return combinedResults.map(result -> {
@@ -86,6 +144,7 @@ public class BalancingService {
                 dto.setKodeBarang(barangGudang.getBarangCabang().getBarang().getKodeBarang());
                 dto.setNamaBarang(barangGudang.getBarangCabang().getBarang().getNamaBarang());
                 dto.setSatuan(barangGudang.getBarangCabang().getBarang().getSatuan());
+                dto.setIdBarangGudang(barangGudang.getIdBarangGudang());
 
                 if (detailBalancing != null) {
                     dto.setIdDetailBalancing(detailBalancing.getIdDetailBalancing());
@@ -110,41 +169,6 @@ public class BalancingService {
         }
     }
 
-
-    public Page<ReportDTO> getReportBalancing(String kat, Date tanggal, Boolean app, Boolean rj, Pageable pageable, HttpServletRequest request) {
-        mapToken = modulAuthority.checkAuthorization(request);
-        String cabang = mapToken.get("cg").toString();
-
-        Optional<KategoriBarang> optionalKategoriBarang = kategoriBarangRepo.findByNamaKategori(kat);
-        if (optionalKategoriBarang.isEmpty()) {
-            return Page.empty();
-        }
-        KategoriBarang kategoriBarang = optionalKategoriBarang.get();
-
-        Page<DetailBalancing> detailBalancingPage = detailBalancingRepo.findFilteredDetailBalancing(cabang, app, rj, kategoriBarang, tanggal, pageable);
-
-        List<Long> idBarangGudangList = detailBalancingPage.getContent().stream()
-                .map(db -> db.getBarangGudang().getIdBarangGudang())
-                .collect(Collectors.toList());
-
-        List<Object[]> pengajuanData = detailBalancingRepo.findPengajuanDataByBarangGudangIds(idBarangGudangList, tanggal);
-
-        Map<Long, Map<String, Long>> pengajuanMap = new HashMap<>();
-        for (Object[] data : pengajuanData) {
-            Long idBarangGudang = (Long) data[0];
-            String namaUnitGroup = (String) data[1];
-            Long jumlahDiterima = (Long) data[2];
-
-            pengajuanMap.computeIfAbsent(idBarangGudang, k -> new HashMap<>()).put(namaUnitGroup, jumlahDiterima);
-        }
-
-        return new PageImpl<>(
-                Collections.singletonList(createReportDTO(detailBalancingPage.getContent(), pengajuanMap)),
-                pageable,
-                detailBalancingPage.getTotalElements()
-        );
-    }
-
     public ResponseEntity<Object> balancing(BalancingDTO balancingDTO, HttpServletRequest request) {
         mapToken = modulAuthority.checkAuthorization(request);
         String cabang = mapToken.get("cg").toString();
@@ -153,7 +177,7 @@ public class BalancingService {
         try {
             Balancing balancing = new Balancing();
             balancing.setApproved(false);
-            balancing.setRejected(false);
+            balancing.setRevisi(false);
             balancing.setActive(true);
             balancing.setCreatedBy(userId);
             balancing.setCreatedAt(new Date());
@@ -210,6 +234,40 @@ public class BalancingService {
         }
     }
 
+    public Page<ReportDTO> getReportBalancing(String kat, Date tanggal, Boolean app, Pageable pageable, HttpServletRequest request) {
+        mapToken = modulAuthority.checkAuthorization(request);
+        String cabang = mapToken.get("cg").toString();
+
+        Optional<KategoriBarang> optionalKategoriBarang = kategoriBarangRepo.findByNamaKategori(kat);
+        if (optionalKategoriBarang.isEmpty()) {
+            return Page.empty();
+        }
+        KategoriBarang kategoriBarang = optionalKategoriBarang.get();
+
+        Page<DetailBalancing> detailBalancingPage = detailBalancingRepo.findFilteredDetailBalancing(cabang, app, kategoriBarang, tanggal, pageable);
+
+        List<Long> idBarangGudangList = detailBalancingPage.getContent().stream()
+                .map(db -> db.getBarangGudang().getIdBarangGudang())
+                .collect(Collectors.toList());
+
+        List<Object[]> pengajuanData = detailBalancingRepo.findPengajuanDataByBarangGudangIds(idBarangGudangList, tanggal);
+
+        Map<Long, Map<String, Long>> pengajuanMap = new HashMap<>();
+        for (Object[] data : pengajuanData) {
+            Long idBarangGudang = (Long) data[0];
+            String namaUnitGroup = (String) data[1];
+            Long jumlahDiterima = (Long) data[2];
+
+            pengajuanMap.computeIfAbsent(idBarangGudang, k -> new HashMap<>()).put(namaUnitGroup, jumlahDiterima);
+        }
+
+        return new PageImpl<>(
+                Collections.singletonList(createReportDTO(detailBalancingPage.getContent(), pengajuanMap)),
+                pageable,
+                detailBalancingPage.getTotalElements()
+        );
+    }
+
     public ResponseEntity<Object> approveBalancing(ReportDTO reportDTO, Boolean isApp, HttpServletRequest request) {
         mapToken = modulAuthority.checkAuthorization(request);
 
@@ -235,12 +293,18 @@ public class BalancingService {
 
             Balancing balancing = optionalDetailBalancing.get().getBalancing();
 
+            KategoriBarang kategoriBarang = optionalDetailBalancing.get().getBarangGudang().getBarangCabang().getBarang().getKategoriBarang();
+
             if (isApp) {
                 balancing.setApproved(true);
-                balancing.setRejected(false);
+                balancing.setRevisi(false);
+                balancing.setUpdatedAt(new Date());
+                balancing.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
             } else {
-                balancing.setRejected(true);
                 balancing.setApproved(false);
+                balancing.setRevisi(true);
+                balancing.setUpdatedAt(new Date());
+                balancing.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
             }
 
             balancingRepo.save(balancing);
@@ -259,52 +323,69 @@ public class BalancingService {
         }
     }
 
-    public ResponseEntity<Object> pergerakanBarang(Long id, Long out, Long in, HttpServletRequest request) {
-        Optional<BarangGudang> optionalBarangGudang = barangGudangRepo.findById(id);
-        if (optionalBarangGudang.isEmpty()) {
-            return new ResponseHandler().generateResponse("Barang tidak ditemukan!!",
-                    HttpStatus.NOT_FOUND,
-                    null,
-                    "FE04033", request);
-        }
-        BarangGudang barangGudang = optionalBarangGudang.get();
+    public Page<BalancingDTO> getRevisi(Pageable pageable, HttpServletRequest request) {
+        mapToken = modulAuthority.checkAuthorization(request);
+        String cabang = mapToken.get("cg").toString();
 
-        Optional<DetailBalancing> optionalDetailBalancing = detailBalancingRepo.findByBarangGudangAndBalancingAndIsActive(barangGudang, null, true);
+        Page<Balancing> balancingPage = balancingRepo.findByIsRevisiAndIsActiveAndCabang(cabang, pageable);
 
-        DetailBalancing detailBalancing;
-        if (optionalDetailBalancing.isPresent()) {
-            detailBalancing = optionalDetailBalancing.get();
-        } else {
-            Optional<DetailBalancing> optionalLastDetailBalancing = detailBalancingRepo.findTopLatestByBarangGudangAndIsActive(barangGudang, true);
+        return balancingPage.map(balancing -> {
+            BalancingDTO dto = new BalancingDTO();
+            dto.setIdBalancing(balancing.getIdBalancing());
+            dto.setCreatedAt(balancing.getCreatedAt());
 
-            DetailBalancing lastDetailBalancing = optionalLastDetailBalancing.orElse(null);
+            Optional<DetailBalancing> optionalDetailBalancing = detailBalancingRepo.findTop1ByBalancing(balancing);
+            dto.setKategori(optionalDetailBalancing.get().getBarangGudang().getBarangCabang().getBarang().getKategoriBarang().getNamaKategori());
 
-            detailBalancing = new DetailBalancing();
-            detailBalancing.setBarangGudang(barangGudang);
-            detailBalancing.setStokAwal(lastDetailBalancing != null ? lastDetailBalancing.getStokAkhir() : barangGudang.getJumlah());
-            detailBalancing.setBarangIn(0L);
-            detailBalancing.setBarangOut(0L);
-            detailBalancing.setActive(true);
-        }
-
-        detailBalancing.setBarangIn(detailBalancing.getBarangIn() + in);
-        detailBalancing.setBarangOut(detailBalancing.getBarangOut() + out);
-        detailBalancing.setStokAkhir(detailBalancing.getStokAwal() + detailBalancing.getBarangIn() - detailBalancing.getBarangOut());
-        detailBalancing.setUpdatedAt(new Date());
-
-        detailBalancingRepo.save(detailBalancing);
-
-        // Update stok di BarangGudang
-        barangGudang.setJumlah(detailBalancing.getStokAkhir());
-        barangGudangRepo.save(barangGudang);
-
-        return new ResponseHandler().generateResponse("Pergerakan barang berhasil dicatat",
-                HttpStatus.OK,
-                null,
-                null, request);
+            return dto;
+        });
     }
 
-    private ReportBalancingDTO convertToDTO(DetailBalancing db, Map<Long, Map<String, Long>> pengajuanMap) {
+    public Page<DetailBalancingDTO> findAllByBalancingId(Long id, Pageable pageable, HttpServletRequest request) {
+
+        Optional<Balancing> optionalBalancing = balancingRepo.findById(id);
+        if (optionalBalancing.isEmpty()) {
+            return Page.empty();
+        }
+
+        Balancing b = optionalBalancing.get();
+
+        Page<DetailBalancing> detailBalancingPage = detailBalancingRepo.findByBalancingAndIsActive(b, true, pageable);
+
+        return detailBalancingPage.map(db -> {
+            DetailBalancingDTO dto = modelMapper.map(db, DetailBalancingDTO.class);
+
+            dto.setSatuan(db.getBarangGudang().getBarangCabang().getBarang().getSatuan());
+
+            return dto;
+        });
+    }
+
+    public ResponseEntity<Object> revisiBalancing(Long idBalancing, HttpServletRequest request) {
+        mapToken = modulAuthority.checkAuthorization(request);
+
+        Optional<Balancing> optionalBalancing = balancingRepo.findById(idBalancing);
+        if (optionalBalancing.isEmpty()) {
+            return new ResponseHandler().generateResponse("Balancing tidak ditemukan",
+                    HttpStatus.NOT_FOUND,
+                    null,
+                    null,
+                    request);
+        }
+
+        Balancing balancing = optionalBalancing.get();
+        balancing.setRevisi(false);
+        balancing.setApproved(false);
+        balancing.setUpdatedBy(Long.parseLong(mapToken.get("de").toString()));
+        balancing.setUpdatedAt(new Date());
+
+        balancingRepo.save(balancing);
+
+        return ResponseEntity.ok("Revisi bulk berhasil dilakukan dan total jumlah diterima telah diupdate");
+    }
+
+
+    private ReportBalancingDTO createDetailReportDTO(DetailBalancing db, Map<Long, Map<String, Long>> pengajuanMap) {
         ReportBalancingDTO dto = new ReportBalancingDTO();
         dto.setIdDetailBalancing(db.getIdDetailBalancing());
         dto.setKodeBarang(db.getBarangGudang().getBarangCabang().getBarang().getKodeBarang());
@@ -330,7 +411,7 @@ public class BalancingService {
     private ReportDTO createReportDTO(List<DetailBalancing> detailBalancings, Map<Long, Map<String, Long>> pengajuanMap) {
         ReportDTO reportDTO = new ReportDTO();
         reportDTO.setDetails(detailBalancings.stream()
-                .map(detailBalancing -> convertToDTO(detailBalancing, pengajuanMap))
+                .map(detailBalancing -> createDetailReportDTO(detailBalancing, pengajuanMap))
                 .collect(Collectors.toList()));
         return reportDTO;
     }

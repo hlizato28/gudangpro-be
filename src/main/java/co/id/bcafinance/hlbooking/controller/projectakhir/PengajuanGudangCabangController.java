@@ -24,7 +24,10 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/pengajuan/cabang")
@@ -79,6 +82,38 @@ public class PengajuanGudangCabangController {
     public ResponseEntity<Object> diterima(@Valid @RequestBody DetailPengajuanGudangCabangDTO detailPengajuanGudangCabangDTO,
                                              HttpServletRequest request) {
         return pengajuanGudangCabangService.diterima(detailPengajuanGudangCabangDTO, request);
+    }
+
+    @GetMapping("/revisi-out/{id}")
+    public ResponseEntity<Page<PengajuanGudangCabangDTO>> revisiPengajuan(
+            @PathVariable(value = "id") Long id,
+            @RequestParam Long tgl,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request) {
+
+        Date tglFormat = new Date(tgl);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String formattedDate = sdf.format(tglFormat);
+
+        try {
+            tglFormat = sdf.parse(formattedDate);
+        } catch (ParseException e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PengajuanGudangCabangDTO> pengajuanGudangCabangDTOPage = pengajuanGudangCabangService.findRevisiPengajuan(id, tglFormat, request, pageable);
+        return ResponseEntity.ok(pengajuanGudangCabangDTOPage);
+    }
+
+    @PutMapping("/revisi-out/save/{id}")
+    public ResponseEntity<Object> revisiDetailPengajuan(
+            @PathVariable Long id,
+            @RequestBody List<PengajuanGudangCabangDTO> pengajuanGudangCabangDTOList,
+            HttpServletRequest request) {
+        return pengajuanGudangCabangService.revisiDetailPengajuan(id, pengajuanGudangCabangDTOList, request);
     }
 }
 
