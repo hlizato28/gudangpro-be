@@ -20,7 +20,7 @@ import java.util.Date;
 import java.util.List;
 
 public interface DetailPengajuanGudangCabangRepo extends JpaRepository<DetailPengajuanGudangCabang, Long> {
-    List<DetailPengajuanGudangCabang> findByPengajuanGudangCabangAndIsApprovedAndIsActive(PengajuanGudangCabang pengajuan, boolean app, boolean act);
+    List<DetailPengajuanGudangCabang> findByPengajuanGudangCabangAndIsApprovedAndIsActiveAndIsApprovedUH(PengajuanGudangCabang pengajuan, boolean app, boolean act, boolean uh);
 
     List<DetailPengajuanGudangCabang> findByPengajuanGudangCabangAndIsApprovedAndIsDiterimaAndIsActive(PengajuanGudangCabang pengajuan, boolean app, boolean dt, boolean act);
 

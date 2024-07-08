@@ -62,7 +62,7 @@ public class BalancingService {
 
     private String[] strExceptionArr = new String[2];
 
-    public ResponseEntity<Object> pergerakanBarang(Long id, Long app, Long out, Long in, HttpServletRequest request) {
+    public ResponseEntity<Object> pergerakanBarang(Long id, Long app, Long out, Long in, Long revisi, HttpServletRequest request) {
         Optional<BarangGudang> optionalBarangGudang = barangGudangRepo.findById(id);
         if (optionalBarangGudang.isEmpty()) {
             return new ResponseHandler().generateResponse("Barang tidak ditemukan!!",
@@ -84,7 +84,7 @@ public class BalancingService {
 
             detailBalancing = new DetailBalancing();
             detailBalancing.setBarangGudang(barangGudang);
-            detailBalancing.setStokAwal(lastDetailBalancing != null ? lastDetailBalancing.getStokAkhir() : (barangGudang.getJumlah() + app));
+            detailBalancing.setStokAwal(lastDetailBalancing != null ? lastDetailBalancing.getStokAkhir() : barangGudang.getJumlah());
             detailBalancing.setStokAkhir(0L);
             detailBalancing.setBarangIn(0L);
             detailBalancing.setBarangOut(0L);
@@ -92,7 +92,7 @@ public class BalancingService {
         }
 
         detailBalancing.setBarangIn(detailBalancing.getBarangIn() + in);
-        detailBalancing.setBarangOut(detailBalancing.getBarangOut() + out);
+        detailBalancing.setBarangOut(detailBalancing.getBarangOut() - revisi + out);
         detailBalancing.setUpdatedAt(new Date());
 
         if (app > 0) {
@@ -102,7 +102,7 @@ public class BalancingService {
                 detailBalancing.setStokAkhir(detailBalancing.getStokAkhir() - app);
             }
         } else {
-            detailBalancing.setStokAkhir(detailBalancing.getStokAwal() + detailBalancing.getBarangIn() - detailBalancing.getBarangOut());
+            detailBalancing.setStokAkhir(detailBalancing.getStokAkhir());
         }
 
         detailBalancingRepo.save(detailBalancing);

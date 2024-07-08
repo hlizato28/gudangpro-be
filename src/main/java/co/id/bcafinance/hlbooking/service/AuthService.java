@@ -94,7 +94,7 @@ public class AuthService implements UserDetailsService {
     }
 
     public ResponseEntity<Object> regis(RegisDTO regisDTO, HttpServletRequest request) {
-        if(!regisDTO.getUsername().isEmpty() || !regisDTO.getCabang().isEmpty())
+        if(regisDTO.getUsername().isEmpty() || regisDTO.getCabang().isEmpty())
         {
             return new ResponseHandler().generateResponse(
                     "Data tidak Valid",

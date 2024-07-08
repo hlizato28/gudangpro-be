@@ -27,9 +27,11 @@ public interface PengajuanGudangCabangRepo extends JpaRepository <PengajuanGudan
             "JOIN DetailPengajuanGudangCabang d ON d.pengajuanGudangCabang = p " +
             "WHERE u.cabang = :cabang " +
             "AND d.isApproved = :app " +
+            "AND d.isApprovedUH = :uh " +
             "AND d.isActive = :active " +
             "AND p.isActive = :active")
     Page<PengajuanGudangCabang> findPengajuanDetailsByCabangAndNotApproved(@Param("cabang") String cabang,
+                                                                           @Param("uh") Boolean uh,
                                                                            @Param("active") Boolean active,
                                                                            @Param("app") Boolean app,
                                                                            Pageable pageable);

@@ -55,6 +55,17 @@ public class PengajuanGudangCabangController {
         return ResponseEntity.ok(pengajuanGudangCabangDTOPage);
     }
 
+    @GetMapping("/detail-by-cabang/kp")
+    public ResponseEntity<Page<PengajuanGudangCabangDTO>> getDetailPengajuanByCabangKP(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpServletRequest request) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PengajuanGudangCabangDTO> pengajuanGudangCabangDTOPage = pengajuanGudangCabangService.getPengajuanDetailByCabangKPForUH( request, pageable);
+        return ResponseEntity.ok(pengajuanGudangCabangDTOPage);
+    }
+
     @GetMapping("/detail-by-user")
     public ResponseEntity<Page<DetailPengajuanGudangCabangDTO>> getDetailPengajuanByUser(
             @RequestParam(defaultValue = "0") int page,
@@ -70,6 +81,12 @@ public class PengajuanGudangCabangController {
     public ResponseEntity<Object> approve(@Valid @RequestBody DetailPengajuanGudangCabangDTO detailPengajuanGudangCabangDTO,
                                           HttpServletRequest request) {
         return pengajuanGudangCabangService.approval(detailPengajuanGudangCabangDTO, true,request);
+    }
+
+    @PutMapping("/approve-uh/{id}")
+    public ResponseEntity<Object> approveUH(@PathVariable(value = "id") Long id,
+                                          HttpServletRequest request) {
+        return pengajuanGudangCabangService.approvalUH(id, request);
     }
 
     @PutMapping("/not-approve")

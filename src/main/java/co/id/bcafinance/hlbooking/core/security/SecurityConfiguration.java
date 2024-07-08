@@ -56,7 +56,8 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
                 .antMatchers(
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
-                        "/api/auth/**"
+                        "/api/auth/**",
+                        "/api/cabang/**"
 //                        ,"/api/usr-mgmnt/**" // Uncomment ini untuk test di browser (Steo 1)
                 )
                 .permitAll()

@@ -39,11 +39,17 @@ public class DetailPengajuanGudangCabang {
     @Column(name = "JumlahDiterima")
     private Long jumlahDiterima;
 
+    @Column(name = "IsApprovedUH")
+    private Boolean isApprovedUH;
+
     @Column(name = "IsApproved")
     private Boolean isApproved;
 
     @Column(name = "IsDiterima")
     private Boolean isDiterima;
+
+    @Column(name = "ResetRevisi")
+    private Long resetRevisi;
 
 
     @Column(name = "IsActive")
@@ -69,12 +75,28 @@ public class DetailPengajuanGudangCabang {
         this.idDetailPengajuanGudangCabang = idDetailPengajuanGudangCabang;
     }
 
+    public Boolean getIsApprovedUH() {
+        return isApprovedUH;
+    }
+
+    public void setApprovedUH(Boolean approvedUH) {
+        isApprovedUH = approvedUH;
+    }
+
     public PengajuanGudangCabang getPengajuanGudangCabang() {
         return pengajuanGudangCabang;
     }
 
     public void setPengajuanGudangCabang(PengajuanGudangCabang pengajuanGudangCabang) {
         this.pengajuanGudangCabang = pengajuanGudangCabang;
+    }
+
+    public Long getResetRevisi() {
+        return resetRevisi;
+    }
+
+    public void setResetRevisi(Long resetRevisi) {
+        this.resetRevisi = resetRevisi;
     }
 
     public BarangGudang getBarangGudang() {
